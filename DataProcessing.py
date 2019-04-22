@@ -1,3 +1,5 @@
+import pandas as pd
+
 class Data:
     def __init__(self,fname_Xtrain=None,fname_ytrain=None,fname_Xtest=None,
                  columns_cat=None,columns_num=None,ylabel=None,joinId=None,
@@ -22,12 +24,10 @@ class Data:
         self.group_test_cat = self.Xtest_df.groupby(self.columns_cat)
 
     def _readData(self,fname=None):
-        import pandas as pd
         return pd.read_csv(fname)
             
     
     def _join_df(self,left_df,right_df,col_id=None,clean=True,drop_id=True):
-        import pandas as pd
         return pd.merge(left_df,right_df,on=col_id,how='left')
     
     def _clean_df(self,df,subset_id=None):
@@ -41,7 +41,6 @@ class Data:
         '''
         encode categorical features to numeric values
         '''
-        import pandas as pd
         nominal_df = self._labelEncoder(input_df,featuresList=nominal_cols) 
         if ordinal_dict:
             columns_ordinal = list(ordinal_dict.keys())
@@ -49,19 +48,27 @@ class Data:
             ordinal_df.replace(ordinal_dict,inplace=True)
             ordinal_df[self.id] = input_df[self.id]
             encoded_df = self._join_df(nominal_df,ordinal_df,col_id=self.id)
-            encoded_df = self._join_df(input_df[self.columns_num+[self.id,self.ylabel]],encoded_df,
-                                 col_id=self.id)
+            if self.ylabel in input_df.columns:
+                encoded_df = self._join_df(input_df[self.columns_num+[self.id,self.ylabel]],encoded_df,
+                                     col_id=self.id)
+            else:
+                encoded_df = self._join_df(input_df[self.columns_num+[self.id]],encoded_df,
+                                     col_id=self.id)
             return encoded_df
         else:
             encoded_df = self._labelEncoder(input_df,
                                             featuresList=self.columns_cat)
-            encoded_df = self._join_df(input_df[self.columns_num+[self.id,self.ylabel]],encoded_df,
-                                 col_id=self.id)
+            if self.ylabel in input_df.columns:
+                encoded_df = self._join_df(input_df[self.columns_num+[self.id,self.ylabel]],encoded_df,
+                                     col_id=self.id)
+            else:
+                encoded_df = self._join_df(input_df[self.columns_num+[self.id]],encoded_df,
+                                     col_id=self.id)
             return encoded_df
         
     
     def _labelEncoder(self,input_df,featuresList=None):
-        import pandas as pd
+        from sklearn.preprocessing import LabelEncoder
         df = pd.DataFrame()
         df[self.id] = input_df[self.id]    
         for f in featuresList:
@@ -70,16 +77,19 @@ class Data:
         return df    
     
 
-    def _preprocessData(self,clean=True,encode=True,nominal_cols=None):
+    def _preprocessData(self,input_df,clean=True,encode=True,nominal_cols=None):
+        '''
+        drop zero valued response rows and duplicated id rows
+        '''
+        df = input_df.copy()
         if clean:
-            self.train_df = self.train_df[self.train_df[self.ylabel]>0]
-            self.train_df = self.train_df[self.train_df[self.ylabel]>0]
-            self.train_df.drop_duplicates(subset=self.id,inplace=True)
+            if self.ylabel in df.columns:
+                df = df[df[self.ylabel]>0]
+            df.drop_duplicates(subset=self.id,inplace=True)
         if encode:
-            self.train_df = self._encode_categorical_features(self.train_df,
-                                                            ordinal_dict=self.ordinal_dict,
-                                                            nominal_cols=nominal_cols)
-            self.Xtest_df = self._encode_categorical_features(self.Xtest_df,
-                                                            ordinal_dict=self.ordinal_dict,
-                                                            nominal_cols=nominal_cols)
+            df = self._encode_categorical_features(df,
+                                                   ordinal_dict=self.ordinal_dict,
+                                                   nominal_cols=nominal_cols)
+        return df    
+            
                         
