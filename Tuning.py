@@ -115,7 +115,7 @@ class Tuning:
         print('tuned optimal hyperparmeter:')
         for k in best_params:
             print('{}: {}'.format(k,best_params[k]))
-        print('\ngridsearch best score:',best_score)
+        print('\nbest score:',best_score)
         # viz loss vs. hyperparameters
         try:
             xs = params[plot_param]
